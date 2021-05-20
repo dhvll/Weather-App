@@ -6,9 +6,32 @@ from .forms import CityForm
 def index(request):
     url = 'http://api.openweathermap.org/data/2.5/weather?q={}&units=imperial&appid=017dd1b845b2f5a434e7f8823bf1217c'
 
+    err_msg = ''
+    message = ''
+    message_class = ''
+
     if request.method == 'POST':
         form = CityForm(request.POST)
-        form.save()
+
+        if form.is_valid():
+            new_city = form.cleaned_data['name']
+            existing_city_count = City.objects.filter(name=new_city).count()
+
+            if existing_city_count == 0:
+                r = requests.get(url.format(new_city)).json()
+                if r['cod'] == 200:
+                    form.save()
+                else:
+                    err_msg = ' City does not exist in world!'
+            else: 
+                err_msg = 'City already exists in database!'
+
+        if err_msg:
+            message = err_msg
+            message_class = 'is-danger'
+        else:
+            message = 'City Added successfully!'
+            message_class = 'is-success'
 
     form = CityForm()
 
@@ -29,5 +52,6 @@ def index(request):
 
         weather_data.append(city_weather)
     
-    context = {'weather_data': weather_data, 'form': form}
+    context = {'weather_data': weather_data, 'form': form, 'message': message, 'message_class': message_class}
+
     return render(request, 'weather/weather.html', context)
